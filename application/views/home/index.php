@@ -1,0 +1,1 @@
+<p>Welcome to WBN Kohana Framework!</p>
