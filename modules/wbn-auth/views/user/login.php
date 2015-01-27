@@ -1,6 +1,6 @@
 <?php defined('SYSPATH') or die('No direct script access.'); ?>
 
-<div class="col-sm-4">
+<div class="col-sm-4 col-sm-offset-4">
     <h3>Login Panel</h3>
     <?php echo Form::open() ?>
     <div id="field-username" class="form-group">

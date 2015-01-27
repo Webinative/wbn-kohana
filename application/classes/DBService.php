@@ -10,6 +10,15 @@ class DBService {
     /** @var PDO */ 
     private static $pdo;
     
+    /** @var string */
+    public $table_name;
+    public $model_name;
+    
+    public function __construct($table_name=NULL, $model_name=NULL) {
+        $this->table_name = $table_name;
+        $this->model_name = $model_name;
+    }
+
     public static function instance($name='default') {
         
         if(self::$pdo)
@@ -43,5 +52,106 @@ class DBService {
         }
         
         return self::$pdo;
+    }
+    
+    public function find($id, $assc=FALSE) {
+        Log::instance()->add(Log::DEBUG, 'Inside ' . __METHOD__ . '()');
+        
+        if(is_null($this->table_name) || is_null($this->model_name))
+            return;
+        
+        $stmt = $this->instance()->prepare('
+            SELECT
+                *
+            FROM
+                '.$this->table_name.'
+            WHERE
+                id = :id
+            LIMIT 1
+            ');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        
+        try {
+            $stmt->execute();
+            
+            if($stmt->rowCount() != 1)
+                return FALSE;
+
+            if($assc)
+                return $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $stmt->setFetchMode(PDO::FETCH_CLASS, $this->model_name);
+            return $stmt->fetch();
+        } catch (PDOException $ex) {
+            Log::instance()->add(Log::ERROR, $ex->getMessage());
+            
+            if($ex->getCode() == '42S02')
+                throw new Exception_TableNotFoundException($this->table_name . ' table not found!');
+            
+            throw new Exception($ex->getMessage());
+        }
+    }
+    
+    public function get_all($assc=FALSE) {
+        Log::instance()->add(Log::DEBUG, 'Inside ' . __METHOD__ . '()');
+        
+        if(is_null($this->table_name) || is_null($this->model_name))
+            return;
+        
+        $stmt = $this->instance()->prepare('
+            SELECT
+                *
+            FROM
+                '.$this->table_name.'
+            ');
+        
+        try {
+            $stmt->execute();
+            
+            if($stmt->rowCount() <= 0)
+                return FALSE;
+
+            if($assc)
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $stmt->setFetchMode(PDO::FETCH_CLASS, $this->model_name);
+            return $stmt->fetchAll();
+        } catch (PDOException $ex) {
+            Log::instance()->add(Log::ERROR, $ex->getMessage());
+            
+            if($ex->getCode() == '42S02')
+                throw new Exception_TableNotFoundException($this->table_name . ' table not found!');
+            
+            throw new Exception($ex->getMessage());
+        }
+    }
+    
+    public function delete($id) {
+        Log::instance()->add(Log::DEBUG, 'Inside ' . __METHOD__ . '()');
+        
+        if(is_null($this->table_name) || is_null($this->model_name))
+            return;
+        
+        $stmt = $this->instance()->prepare('
+            DELETE FROM
+                '.$this->table_name.'
+            WHERE
+                id = :id
+            LIMIT 1
+            ');
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        
+        try {
+            $stmt->execute();
+            return $stmt->rowCount();
+            
+        } catch (PDOException $ex) {
+            Log::instance()->add(Log::ERROR, $ex->getMessage());
+            
+            if($ex->getCode() == '42S02')
+                throw new Exception_TableNotFoundException($this->table_name . ' table not found!');
+            
+            throw new Exception($ex->getMessage());
+        }
     }
 }

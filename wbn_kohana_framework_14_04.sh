@@ -81,5 +81,5 @@ if [ -d "$dirName" ]; then
 fi
 
 echo "Virtual Host configuration complete... Do not forget to make an entry in your HOSTS file!"
-echo "Run 'sudo a2ensite $serverName' to enable your virtual host!"
+echo "Run 'sudo a2ensite $serverName.conf' to enable your virtual host!"
 read -p "Press any key to exit..." pK

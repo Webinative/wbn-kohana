@@ -39,13 +39,22 @@ endif;
         <link rel="stylesheet" href="/js/plugins/bootstrap-3.2.0/css/bootstrap-theme.min.css">
         <script src="/js/plugins/bootstrap-3.2.0/js/bootstrap.min.js"></script>
 
-        <link rel="stylesheet" type="text/css" media="screen" href="/css/template/default.css"/>
-
         <?php
         if (isset($stylesheets) AND is_array($stylesheets)):
             Helper_Media::load_css($stylesheets);
         endif;
         ?>
+        
+        <style type="text/css">
+            body {
+                background-color: #f2f2f2;
+            }
+
+            footer {
+                margin-top: 20px;
+                text-align: center;
+            }
+        </style>
     </head>
     <body>
         <div class="container">

@@ -5,7 +5,7 @@
  */
 class Controller_Home extends Controller_Template {
 
-    public $template = 'template/default';
+    public $template = 'templates/default';
     
     public function action_index()
     {
