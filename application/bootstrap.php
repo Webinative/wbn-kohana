@@ -128,7 +128,7 @@ Kohana::modules(array(
     'auth' => MODPATH . 'auth', // Basic authentication
     // 'cache'      => MODPATH.'cache',      // Caching with multiple backends
     // 'codebench'  => MODPATH.'codebench',  // Benchmarking tool
-    // 'database' => MODPATH . 'database', // Database access
+     'database' => MODPATH . 'database', // Database access
     // 'image' => MODPATH . 'image', // Image manipulation
     // 'minion'     => MODPATH.'minion',     // CLI Tasks
     // 'orm'        => MODPATH.'orm',        // Object Relationship Mapping
@@ -141,6 +141,13 @@ Kohana::modules(array(
  * Set the routes. Each route must have a minimum of a name, a URI and a set of
  * defaults for the URI.
  */
+
+Route::set('sample', 'sample(/<controller>(/<action>(/<id>)))')
+        ->defaults(array(
+            'directory' => 'Sample',
+            'controller' => 'user',
+            'action' => 'index',
+        ));
 
 Route::set('default', '(<controller>(/<action>(/<id>)))')
         ->defaults(array(

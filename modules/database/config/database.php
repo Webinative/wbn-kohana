@@ -39,7 +39,7 @@ return array
 			 * string   password    database password
 			 * boolean  persistent  use persistent connections?
 			 */
-			'dsn'        => 'mysql:host=localhost;dbname=test',
+			'dsn'        => 'mysql:host=localhost;dbname=sample',
 			'username'   => 'root',
 			'password'   => 'root',
 			'persistent' => FALSE,
@@ -49,7 +49,7 @@ return array
 		 *
 		 * string   identifier  set the escaping identifier
 		 */
-		'table_prefix' => '',
+		'table_prefix' => 'SAM_',
 		'charset'      => 'utf8',
 		'caching'      => FALSE,
 	),

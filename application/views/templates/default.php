@@ -50,17 +50,17 @@ endif;
     <body>
         <div class="container">
             <header>
-                Hello!
+                <h1>Sample Application</h1>
             </header>
         </div>
         <div class="clearfix"></div>
 
-        <div id="view-content">
+        <div id="view-content" class="container text-left">
             <?php if (isset($content)) echo $content; ?>
         </div>
 
         <footer class="container">
-            Copyrights &copy; 2011-<?php echo date('Y'); ?> Magesh Ravi
+            Copyrights &copy; 2011-<?php echo date('Y'); ?> Webinative Technologies
         </footer>
     </body>
 </html>
