@@ -4,7 +4,15 @@
  * Description of WbnModel
  *
  * @author mageshravi
- * @version 1.0
+ * @version 1.0.1
+ * 
+ * CHANGELOG
+ * ---------
+ * One return type per function norm implemented for find() and all() functions
+ * New function find_by(column) added.
+ * Throws Exception_UniqueKeyConstraintViolation, Exception_RecordNotFound when applicable
+ * Bug fixes
+ * ---------
  */
 class WbnModel {
     
@@ -64,7 +72,7 @@ class WbnModel {
      * 
      * @return int Last insert id
      * @throws Exception_TableNotFound
-     * @throws Exception
+     * @throws Exception_App
      */
     public function create() {
         
@@ -113,27 +121,56 @@ class WbnModel {
                 throw new Exception_TableNotFound($this->table_name . ' table not found!');
             }
             
-            // @todo handle unique key constraint violation
+            // unique key constraint violation
+            if($ex->getCode() == '23000') {
+                throw new Exception_UniqueKeyConstraintViolation;
+            }
             
             // @todo handle foreign key constraint violation
             
-            throw new Exception($ex->getMessage());
+            throw new Exception_App($ex->getMessage());
         }
     }
     
     /**
      * 
      * @param int $id primary key
-     * @param boolean $assc if set to TRUE, returns associative array if found, else boolean FALSE
-     * @return WbnModel if found, else boolean FALSE
+     * @return WbnModel
      * @throws Exception_TableNotFound
-     * @throws Exception
+     * @throws Exception_App
+     * @throws Exception_RecordNotFound
      */
-    public static function find($id, $assc=FALSE) {
-        Log::instance()->add(Log::DEBUG, 'Inside ' . __METHOD__ . '()');
-        
-        if(is_null(static::$table_name) || is_null(static::$model_name))
-            return;
+    public static function find($id) {
+        $stmt = self::exec_find($id);
+        $stmt->setFetchMode(PDO::FETCH_CLASS, static::$model_name);
+        return $stmt->fetch();
+    }
+    
+    /**
+     * 
+     * @param int $id
+     * @return array row as associative array
+     * @throws Exception_RecordNotFound
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     */
+    public static function assoc_find($id) {
+        $stmt = self::exec_find($id);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * 
+     * @param int $id
+     * @return PDOStatement
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     * @throws Exception_RecordNotFound
+     */
+    private static function exec_find($id) {
+        if(is_null(static::$table_name) || is_null(static::$model_name)) {
+            throw new Exception_TableNotFound("Missing table name or model name!");
+        }
 
         $stmt = self::instance()->prepare('
             SELECT
@@ -144,41 +181,133 @@ class WbnModel {
                 id = :id
             LIMIT 1
             ');
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         
         try {
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             
-            if($stmt->rowCount() != 1)
-                return FALSE;
+            if($stmt->rowCount() == 0) {
+                throw new Exception_RecordNotFound();
+            }
+            
+            return $stmt;
 
-            if($assc)
-                return $stmt->fetch(PDO::FETCH_ASSOC);
-
-            $stmt->setFetchMode(PDO::FETCH_CLASS, static::$model_name);
-            return $stmt->fetch();
         } catch (PDOException $ex) {
             Log::instance()->add(Log::ERROR, $ex->getMessage());
             
-            if($ex->getCode() == '42S02')
+            if($ex->getCode() == '42S02') {
                 throw new Exception_TableNotFound(static::$table_name . ' table not found!');
+            }
             
-            throw new Exception($ex->getMessage());
+            throw new Exception_App($ex->getMessage());
         }
     }
     
     /**
      * 
-     * @param boolean $assc if set to TRUE, returns array of rows (associative) if records found, else boolean FALSE
-     * @return array array of WbnModel objects if records found, else boolean FALSE
+     * @param string $column
+     * @param mixed $value
+     * @param int $data_type
+     * @return array array of WbnModel
      * @throws Exception_TableNotFound
-     * @throws Exception
+     * @throws Exception_App
      */
-    public static function all($assc=FALSE) {
-        Log::instance()->add(Log::DEBUG, 'Inside ' . __METHOD__ . '()');
+    public static function find_by($column, $value, $data_type = PDO::PARAM_STR) {
+        $stmt = self::exec_find_by($column, $value, $data_type);
+        return $stmt->fetchAll(PDO::FETCH_CLASS, static::$model_name);
+    }
+    
+    /**
+     * 
+     * @param string $column
+     * @param mixed $value
+     * @param int $data_type
+     * @return array array of rows
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     */
+    public static function assoc_find_by($column, $value, $data_type = PDO::PARAM_STR) {
+        $stmt = self::exec_find_by($column, $value, $data_type);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * 
+     * @param string $column
+     * @param mixed $value
+     * @param int $data_type Explicit data type for the parameter using the PDO::PARAM_* constants.
+     * @return PDOStatement
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     */
+    private static function exec_find_by($column, $value, $data_type) {
         
-        if(is_null(static::$table_name) || is_null(static::$model_name))
-            return;
+        if(is_null(static::$table_name) || is_null(static::$model_name)) {
+            throw new Exception_TableNotFound("Missing table name or model name!");
+        }
+        
+        if (property_exists(static::$model_name, $column) !== TRUE) {
+            throw new Exception_App("Column \"$column\" not found!");
+        }
+        
+        $query = "
+                SELECT
+                    *
+                FROM
+                    " . self::$table_name . "
+                WHERE
+                    $column = :value
+                ";
+
+        $stmt = self::instance()->prepare($query);
+        
+        try {
+            $stmt->bindValue(':value', $value, $data_type);
+            $stmt->execute();
+            return $stmt;
+        } catch (PDOException $ex) {
+            Log::instance()->add(Log::ERROR, $ex->getMessage());
+            
+            if($ex->getCode() == '42S02') {
+                throw new Exception_TableNotFound(static::$table_name . ' table not found!');
+            }
+            
+            throw new Exception_App($ex->getMessage());
+        }
+    }
+    
+    /**
+     * 
+     * @return array array of WbnModel objects
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     */
+    public static function all() {
+        $stmt = self::exec_all();
+        return $stmt->fetchAll(PDO::FETCH_CLASS, static::$model_name);
+    }
+    
+    /**
+     * 
+     * @return array array of rows
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     */
+    public static function assoc_all() {
+        $stmt = self::exec_all();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * 
+     * @return PDOStatement
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     */
+    private static function exec_all() {
+        if(is_null(static::$table_name) || is_null(static::$model_name)) {
+            throw new Exception_TableNotFound('Missing table name or model name!');
+        }
         
         $stmt = self::instance()->prepare('
             SELECT
@@ -189,22 +318,24 @@ class WbnModel {
         
         try {
             $stmt->execute();
-
-            if($assc)
-                return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $stmt->setFetchMode(PDO::FETCH_CLASS, static::$model_name);
-            return $stmt->fetchAll();
+            return $stmt;
         } catch (PDOException $ex) {
             Log::instance()->add(Log::ERROR, $ex->getMessage());
             
-            if($ex->getCode() == '42S02')
+            if($ex->getCode() == '42S02') {
                 throw new Exception_TableNotFound(static::$table_name . ' table not found!');
+            }
             
-            throw new Exception($ex->getMessage());
+            throw new Exception_App($ex->getMessage());
         }
     }
     
+    /**
+     * 
+     * @return int rowCount
+     * @throws Exception_TableNotFound
+     * @throws Exception_App
+     */
     public function update() {
         Log::instance()->add(Log::DEBUG, 'Inside ' . __METHOD__ . '()');
         
@@ -237,9 +368,18 @@ class WbnModel {
         }
         
         $_input_params[':id'] = $this->id;
-        $stmt->execute($_input_params);
         
-        return $stmt->rowCount();
+        try {
+            $stmt->execute($_input_params);
+            return $stmt->rowCount();
+        } catch (PDOException $ex) {
+            Log::instance()->add(Log::DEBUG, $ex->getMessage());
+            
+            if($ex->getCode() == '42S02')
+                throw new Exception_TableNotFound(static::$table_name . ' table not found!');
+            
+            throw new Exception_App($ex->getMessage());
+        }
     }
     
     /**
@@ -247,7 +387,7 @@ class WbnModel {
      * @param int $id
      * @return int number of rows deleted
      * @throws Exception_TableNotFound
-     * @throws Exception
+     * @throws Exception_App
      */
     public static function delete($id) {
         Log::instance()->add(Log::DEBUG, 'Inside ' . __METHOD__ . '()');
@@ -272,7 +412,7 @@ class WbnModel {
             if($ex->getCode() == '42S02')
                 throw new Exception_TableNotFound(static::$table_name . ' table not found!');
             
-            throw new Exception($ex->getMessage());
+            throw new Exception_App($ex->getMessage());
         }
     }
     
@@ -286,7 +426,7 @@ class WbnModel {
         $child_attrs = get_class_vars(get_class($this));
         $base_attrs = get_class_vars(__CLASS__);
         
-        if(self::$timestamps) {
+        if(static::$timestamps) {
             // if timestamps are included, retain them
             unset($base_attrs['created_on']);
             unset($base_attrs['last_updated_on']);
@@ -321,7 +461,7 @@ class WbnModel {
         foreach($_fields as $field => $error_msg) {
             $field_attr = $this->{$field};
             
-            if(empty($field_attr) || trim($field_attr) == "") {
+            if($field_attr === "" || trim($field_attr) === "" || is_null($field_attr)) {
                 if(empty($_errors[$field])) {
                     $_errors[$field] = $error_msg;
                 }
